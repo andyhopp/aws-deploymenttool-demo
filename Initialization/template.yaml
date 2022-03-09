@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  #
+  # DynamoDB Tables
+  #
+  WeatherTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: DeploymentToolWeatherTable
+      PrimaryKey:
+          Name: date
+          Type: String
+
+  DynamoDbAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: DeploymentToolDynamoDbAccessRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: 'AllowECSDDBAccess'
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+          - Sid: 'AllowLambdaDDBAccess'
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess'
+
+  PopulateWeatherTableFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: WeatherTable
+    Properties:
+      PackageType: Zip
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt DynamoDbAccessRole.Arn
+      Runtime: nodejs14.x
+      Timeout: 30
+      InlineCode: >
+        const response = require('cfn-response');
+        const AWS = require("aws-sdk");
+        const dynamoDB = new AWS.DynamoDB.DocumentClient();
+        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+        exports.handler = async function (event, context) {
+          console.log(JSON.stringify(event));
+          if (event.RequestType != 'Create') {
+            response.send(event, context, response.SUCCESS, {});
+          }
+          try {
+            const result = await dynamoDB.batchWrite(
+              {
+                RequestItems: {
+                  'DeploymentToolWeatherTable': [
+                    {
+                      PutRequest: {
+                        Item: {
+                          "date": "2018-05-06",
+                          "temperatureC": 1,
+                          "summary": "Freezing"
+                        }
+                      }
+                    },
+                    {
+                      PutRequest: {
+                        Item: {
+                          "date": "2018-05-07",
+                          "temperatureC": 14,
+                          "summary": "Bracing"
+                        }
+                      }
+                    },
+                    {
+                      PutRequest: {
+                        Item: {
+                          "date": "2018-05-08",
+                          "temperatureC": -13,
+                          "summary": "Freezing"
+                        }
+                      }
+                    },
+                    {
+                      PutRequest: {
+                        Item: {
+                          "date": "2018-05-09",
+                          "temperatureC": -16,
+                          "summary": "Balmy"
+                        }
+                      }
+                    },
+                    {
+                      PutRequest: {
+                        Item: {
+                          "date": "2018-05-10",
+                          "temperatureC": -2,
+                          "summary": "Chilly"
+                        }
+                      }
+                    },
+                  ]
+                }
+              }
+            ).promise();
+            console.log(JSON.stringify(result));
+            response.send(event, context, response.SUCCESS, {});
+          } catch (e) {
+            console.log(JSON.stringify(e));
+            response.send(event, context, response.FAILED, e);
+          }
+          await sleep(1000);
+        };
+
+  PopulateWeatherTable:
+    Type: Custom::PopulateWeatherTable
+    Properties:
+      ServiceToken: !GetAtt PopulateWeatherTableFunction.Arn
+Outputs:
+  TaskExecutionRoleARN:
+    Description: Task execution role ARN
+    Value: !GetAtt DynamoDbAccessRole.Arn
