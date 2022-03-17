@@ -20,6 +20,11 @@ Resources:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
+          - Sid: 'AllowLambdaDDBAccess'
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
           - Sid: 'AllowECSDDBAccess'
             Effect: Allow
             Principal:
