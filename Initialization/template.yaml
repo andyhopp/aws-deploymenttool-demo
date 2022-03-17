@@ -25,10 +25,10 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
-          - Sid: 'AllowLambdaDDBAccess'
+          - Sid: 'AllowAppRunnerDDBAccess'
             Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
+              Service: tasks.apprunner.amazonaws.com
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
