@@ -25,6 +25,11 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: 'sts:AssumeRole'
+          - Sid: 'AllowEC2DDBAccess'
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
           - Sid: 'AllowECSDDBAccess'
             Effect: Allow
             Principal:
